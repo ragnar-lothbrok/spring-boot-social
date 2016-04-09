@@ -160,6 +160,12 @@ public class SocialAccountFactory {
 	public UserDetail getDetailsFromGoogle(SocialUserDetail socialUserDetail) {
 		UserDetail userDetail = null;
 		try {
+			
+//					HttpTransport netTransport = new NetHttpTransport();
+//					JsonFactory jsonFactory = new JacksonFactory();
+//					GoogleTokenResponse googleTokenResponse = new GoogleAuthorizationCodeTokenRequest(netTransport, jsonFactory, googleAppId,
+//							googleAppSecret, accessToken, googleRedirectURi).execute();
+//					accessToken = googleTokenResponse.getAccessToken();
 			String accessToken = socialUserDetail.getAccessToken();
 			Google google = googleConnectionFactory.createConnection(
 					googleConnectionFactory.getOAuthOperations().exchangeForAccess(accessToken, redirectionURI, null))
