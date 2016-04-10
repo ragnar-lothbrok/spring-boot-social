@@ -9,6 +9,7 @@ function getSocialLinks() {
 			document.getElementById('facebook').setAttribute("href",data.fbLogin);
 			document.getElementById('google').setAttribute("href",data.googleLogin);
 			document.getElementById('twitter').setAttribute("href",data.twitterLogin);
+			document.getElementById('linkedin').setAttribute("href",data.linkedInLogin);
 	}).error(function( errorThrown) {
 			alert(errorThrown);
 	});

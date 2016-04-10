@@ -13,6 +13,7 @@ public interface UserAPIConstants {
 	public static SimpleDateFormat SQL_TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 	public static SimpleDateFormat FACEBOOK_DATE_FORMAT = new SimpleDateFormat("mm/dd/yyyy");
 	public static String TWITTER = "TWITTER";
+	public static String LINKEDIN = "LINKEDIN";
 	public static final String SEPERATOR = "~";
 	public static final String FACEBOOK = "FACEBOOK";
 	public static final String GOOGLE = "GOOGLE";

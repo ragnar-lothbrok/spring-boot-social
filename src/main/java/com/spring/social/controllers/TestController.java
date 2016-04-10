@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
@@ -20,12 +21,20 @@ import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.social.linkedin.api.impl.LinkedInTemplate;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spring.social.account.constants.UserAPIConstants;
 import com.spring.social.account.dto.SocialUserDetail;
 import com.spring.social.account.model.MyAccessToken;
@@ -84,6 +93,18 @@ public class TestController {
 	@Autowired
 	MyAccessToken myAccessToken;
 
+	@Value("${linkedin.appID}")
+	private String linkedinAppId;
+
+	@Value("${linkedin.appSecret}")
+	private String linkedinAppSecret;
+
+	@Value("${linkedin.oauth.uri}")
+	private String linkedinLoginURI;
+
+	@Value("${linkedin.redirect.uri}")
+	private String linkedinRedirectURi;
+
 	@RequestMapping(
 		value = "/socialLinks/",
 		method = { RequestMethod.GET },
@@ -111,6 +132,10 @@ public class TestController {
 		String googleLogin = MessageFormat.format(googleLoginURI, new Object[] { googleAppId, googleRedirectURi });
 		responseMap.put("googleLogin", googleLogin);
 
+		String linkedInLogin = MessageFormat.format(linkedinLoginURI,
+				new Object[] { linkedinAppId, linkedinRedirectURi, UUID.randomUUID().toString() });
+		responseMap.put("linkedInLogin", linkedInLogin);
+
 		return responseMap;
 	}
 
@@ -134,6 +159,11 @@ public class TestController {
 			String socialMedia = request.getParameter("media");
 			String accessToken = null;
 			String code = request.getParameter("code");
+			String state = request.getParameter("state");
+			// LinkedIn
+			String errorCode = request.getParameter("error");
+			String errorDescription = request.getParameter("error_description");
+
 			if (code != null || UserAPIConstants.TWITTER.equalsIgnoreCase(socialMedia)) {
 				switch (socialMedia) {
 				case UserAPIConstants.FACEBOOK:
@@ -159,6 +189,15 @@ public class TestController {
 					twitter.setOAuthAccessToken(twitterAccessToken);
 					twitter4j.User user = twitter.verifyCredentials();
 					break;
+				case UserAPIConstants.LINKEDIN:
+					accessToken = request.getParameter("code");
+					String url = "https://www.linkedin.com/uas/oauth2/accessToken";
+					url += "?grant_type=authorization_code&code=" + code + "&redirect_uri=" + linkedinRedirectURi + "&client_id=" + linkedinAppId
+							+ "&client_secret=" + linkedinAppSecret;
+					ResponseEntity<? extends String> sd = restTemplate.exchange(new URI(url), HttpMethod.POST, null, new String().getClass());
+					LinkedInResponse linkedInResponse = new ObjectMapper().readValue(sd.getBody(), LinkedInResponse.class);
+					LinkedInTemplate linkedInTemplate = new LinkedInTemplate(linkedInResponse.getAccess_token());
+					break;
 				default:
 					break;
 				}
@@ -172,6 +211,37 @@ public class TestController {
 			response.sendRedirect("failure.html");
 		}
 	}
+
+	static class LinkedInResponse {
+		private String access_token;
+		private Long expires_in;
+
+		public String getAccess_token() {
+			return access_token;
+		}
+
+		public void setAccess_token(String access_token) {
+			this.access_token = access_token;
+		}
+
+		public Long getExpires_in() {
+			return expires_in;
+		}
+
+		public void setExpires_in(Long expires_in) {
+			this.expires_in = expires_in;
+		}
+
+		@Override
+		public String toString() {
+			return "LinkedInResponse [access_token=" + access_token + ", expires_in=" + expires_in + "]";
+		}
+
+	}
+
+	@Autowired
+	@Qualifier("customTemplate")
+	RestTemplate restTemplate;
 
 	/**
 	 * 
