@@ -28,7 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.spring.social.account.constants.UserAPIConstants;
 import com.spring.social.account.dto.SocialUserDetail;
+import com.spring.social.account.model.MyAccessToken;
 import com.spring.social.security.SocialAccountFactory;
+
+import twitter4j.Twitter;
+import twitter4j.TwitterException;
+import twitter4j.TwitterFactory;
+import twitter4j.auth.AccessToken;
+import twitter4j.auth.RequestToken;
 
 @RestController
 public class TestController {
@@ -65,17 +72,39 @@ public class TestController {
 	@Value("${google.redirect.uri}")
 	private String googleRedirectURi;
 
-	@RequestMapping(value = "/test/", method = { RequestMethod.GET }, produces = { MediaType.APPLICATION_JSON_VALUE })
-	public Map<String, Object> test() {
-		Map<String, Object> responseMap = new HashMap<String, Object>();
-		responseMap.put("status", "success");
-		return responseMap;
-	}
+	@Value("${twitter.login.consumerapi}")
+	private String consumerAPI;
 
-	@RequestMapping(value = "/socialLinks/", method = { RequestMethod.GET }, produces = {
-			MediaType.APPLICATION_JSON_VALUE })
-	public Map<String, Object> fetchSocialLinks() {
+	@Value("${twitter.login.consumersecret}")
+	private String consumerKey;
+
+	@Value("${twitter.redirect.uri}")
+	private String twitterRedirectURi;
+
+	@Autowired
+	MyAccessToken myAccessToken;
+
+	@RequestMapping(
+		value = "/socialLinks/",
+		method = { RequestMethod.GET },
+		produces = { MediaType.APPLICATION_JSON_VALUE })
+	public Map<String, Object> fetchSocialLinks() throws TwitterException {
 		Map<String, Object> responseMap = new HashMap<String, Object>();
+		try {
+			Twitter twitter = new TwitterFactory().getInstance();
+			// Twitter
+			twitter.setOAuthConsumer(consumerAPI, consumerKey);
+			RequestToken requestToken = twitter.getOAuthRequestToken(twitterRedirectURi);
+			String token = requestToken.getToken();
+			String tokenSecret = requestToken.getTokenSecret();
+			String authUrl = requestToken.getAuthorizationURL();
+			myAccessToken = new MyAccessToken(token, tokenSecret);
+			responseMap.put("twitterLogin", authUrl);
+		} catch (Exception exception) {
+			exception.printStackTrace();
+			logger.error("Exception occured {}", exception);
+		}
+
 		String fbLogin = MessageFormat.format(fbLoginURI, new Object[] { fbAppId, fbRedirectURi, fbCancelURi });
 		responseMap.put("fbLogin", fbLogin);
 
@@ -96,28 +125,39 @@ public class TestController {
 		return fbGraphUrl;
 	}
 
-	@RequestMapping(value = "/socialLogin", method = RequestMethod.GET)
+	@RequestMapping(
+		value = "/socialLogin",
+		method = RequestMethod.GET)
 	public void socialLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		boolean isSuccess = false;
 		try {
 			String socialMedia = request.getParameter("media");
 			String accessToken = null;
 			String code = request.getParameter("code");
-			if (code != null) {
+			if (code != null || UserAPIConstants.TWITTER.equalsIgnoreCase(socialMedia)) {
 				switch (socialMedia) {
 				case UserAPIConstants.FACEBOOK:
 					accessToken = getAccessToken(request.getParameter("code"), socialMedia);
 					if (accessToken != null) {
 						isSuccess = true;
-						socialAccountFactory.getDetailsFromFacebook(new SocialUserDetail(accessToken,
-								UUID.randomUUID().toString(), UserAPIConstants.FACEBOOK));
+						socialAccountFactory
+								.getDetailsFromFacebook(new SocialUserDetail(accessToken, UUID.randomUUID().toString(), UserAPIConstants.FACEBOOK));
 					}
 					break;
 				case UserAPIConstants.GOOGLE:
 					accessToken = request.getParameter("code");
 					isSuccess = true;
-					socialAccountFactory.getDetailsFromGoogle(new SocialUserDetail(accessToken,
-								UUID.randomUUID().toString(), UserAPIConstants.GOOGLE));
+					socialAccountFactory
+							.getDetailsFromGoogle(new SocialUserDetail(accessToken, UUID.randomUUID().toString(), UserAPIConstants.GOOGLE));
+					break;
+				case UserAPIConstants.TWITTER:
+					Twitter twitter = new TwitterFactory().getInstance();
+					twitter.setOAuthConsumer(consumerAPI, consumerKey);
+					String verifier = request.getParameter("oauth_verifier");
+					RequestToken requestToken = new RequestToken(myAccessToken.getToken(), myAccessToken.getTokensecret());
+					AccessToken twitterAccessToken = twitter.getOAuthAccessToken(requestToken, verifier);
+					twitter.setOAuthAccessToken(twitterAccessToken);
+					twitter4j.User user = twitter.verifyCredentials();
 					break;
 				default:
 					break;
@@ -167,8 +207,7 @@ public class TestController {
 				logger.error("ERROR: Access Token Invalid:");
 				throw new RuntimeException("ERROR: Access Token Invalid: " + accessToken);
 			}
-			return accessToken.toString().substring(accessToken.toString().indexOf("=") + 1,
-					accessToken.toString().indexOf("&expires="));
+			return accessToken.toString().substring(accessToken.toString().indexOf("=") + 1, accessToken.toString().indexOf("&expires="));
 		}
 		return null;
 	}
