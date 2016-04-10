@@ -1,3 +1,9 @@
 http://localhost:8888/user-service/webjars/angular-swagger-ui/0.2.3/dist/index.html
 
 http://localhost:8888/user-service/v2/api-docs
+
+https://developer.linkedin.com/docs/oauth2#ux
+
+http://localhost:8888/user-service/loginind.html
+
+Google Plus == Facebook == Twitter == LinkedIn
