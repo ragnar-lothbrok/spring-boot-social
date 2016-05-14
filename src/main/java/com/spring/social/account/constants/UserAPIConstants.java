@@ -14,6 +14,7 @@ public interface UserAPIConstants {
 	public static SimpleDateFormat FACEBOOK_DATE_FORMAT = new SimpleDateFormat("mm/dd/yyyy");
 	public static String TWITTER = "TWITTER";
 	public static String LINKEDIN = "LINKEDIN";
+	public static String INSTAGRAM = "INSTAGRAM";
 	public static final String SEPERATOR = "~";
 	public static final String FACEBOOK = "FACEBOOK";
 	public static final String GOOGLE = "GOOGLE";
